@@ -58,6 +58,7 @@
   },
   "dependencies": {
     "immutable": ">= 3.7.6",
-    "redux-saga": ">= 0.9.5"
+    "redux-saga": ">= 0.9.5",
+    "node-uuid": ">= 1.4.7
   }
 }

@@ -99,9 +99,12 @@ export function selectRecordOrEmptyObject(modelName, id, crud) {
   return record
 }
 
-export function selectActionStatus(modelName, crud, action) {
-  const status = crud.getIn([modelName, 'actionStatus', action]) ||
-                 fromJS({ pending: false, isSuccess: null, message: null,
-                          errors: {}, id: null })
-  return status.toJS()
+export function selectActionStatus(modelName, crud, action, req_uuid) {
+  const status = crud.getIn([modelName, 'actionStatus', action, req_uuid])
+  return (status || fromJS({})).toJS()
+}
+
+export function selectAllActionStatuses(modelName, crud, action) {
+  const statuses = crud.getIn([modelName, 'actionStatus', action])
+  return (statuses || fromJS({})).toJS()
 }

@@ -1,3 +1,4 @@
+import uuid from 'node-uuid'
 import {
   FETCH, FETCH_SUCCESS, FETCH_ERROR,
   FETCH_ONE, FETCH_ONE_SUCCESS, FETCH_ONE_ERROR,
@@ -41,13 +42,15 @@ export function fetchRecord(model, id, path, params = {}) {
   }
 }
 
-export function createRecord(model, path, data = {}, params = {}) {
+export function createRecord(model, path, data = {}, params = {},
+                             req_uuid = uuid.v4()) {
   return {
     type: CREATE,
     meta: {
       success: CREATE_SUCCESS,
       failure: CREATE_ERROR,
-      model
+      model,
+      req_uuid
     },
     payload: {
       method: 'post',
@@ -58,14 +61,16 @@ export function createRecord(model, path, data = {}, params = {}) {
   }
 }
 
-export function updateRecord(model, id, path, data = {}, params = {}) {
+export function updateRecord(model, id, path, data = {}, params = {},
+                             req_uuid = uuid.v4()) {
   return {
     type: UPDATE,
     meta: {
       success: UPDATE_SUCCESS,
       failure: UPDATE_ERROR,
       model,
-      id
+      id,
+      req_uuid
     },
     payload: {
       method: 'put',
@@ -76,14 +81,16 @@ export function updateRecord(model, id, path, data = {}, params = {}) {
   }
 }
 
-export function deleteRecord(model, id, path, params = {}) {
+export function deleteRecord(model, id, path, params = {},
+                             req_uuid = uuid.v4()) {
   return {
     type: DELETE,
     meta: {
       success: DELETE_SUCCESS,
       failure: DELETE_ERROR,
       model,
-      id
+      id,
+      req_uuid
     },
     payload: {
       method: 'del',
@@ -93,10 +100,10 @@ export function deleteRecord(model, id, path, params = {}) {
   }
 }
 
-export function clearActionStatus(model, action) {
+export function clearActionStatus(model, action, req_uuid) {
   return {
     type: CLEAR_ACTION_STATUS,
-    payload: { model, action }
+    payload: { model, action, req_uuid }
   }
 }
 

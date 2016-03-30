@@ -230,9 +230,17 @@ What follows is our original notes on the functioning of this module. Someday we
                    record: { id: 15001, ... } }
         },
         actionStatus: {
-          create: { pending: false, isSuccess: true, errors: null },
-          update: { pending: false, isSuccess: false, message: "Invalid id", errors: { "planner_id": "not a planner" } },
-          delete: { pending: true }
+          create: {
+            1: { pending: false, isSuccess: true, errors: null }
+          },
+          update: {
+            1: { pending: false, id: 8, isSuccess: false, message: "Invalid id",
+                 errors: { "planner_id": "not a planner" } }
+          },
+          delete: {
+            1: { pending: true, id: 44 },
+            2: { pending: true, id: 45 }
+          }
         }
       },
       comments: {

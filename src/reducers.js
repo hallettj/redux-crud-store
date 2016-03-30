@@ -1,4 +1,5 @@
 import { fromJS } from 'immutable'
+import uuid from 'node-uuid'
 import {
   FETCH, FETCH_SUCCESS, FETCH_ERROR,
   FETCH_ONE, FETCH_ONE_SUCCESS, FETCH_ONE_ERROR,
@@ -31,7 +32,7 @@ const actionStatusInitialState = fromJS({
 })
 
 const modelInitialState = fromJS({
-  collections: [],
+  collections: undefined,
   byId: undefined,
   actionStatus: undefined
 })
@@ -152,51 +153,52 @@ function collectionsReducer(state = collectionsInitialState, action) {
 
 
 function actionStatusReducer(state = actionStatusInitialState, action) {
+  const { req_uuid } = action.meta
   switch (action.type) {
     case CLEAR_ACTION_STATUS:
       return state.set(action.payload.action, fromJS({}))
     case CREATE:
-      return state.set('create', fromJS({
-        pending: true
+      return state.setIn(['create', req_uuid], fromJS({
+        pending: true, req_uuid
       }))
     case CREATE_SUCCESS:
-      return state.set('create', fromJS({
+      return state.setIn(['create', req_uuid], fromJS({
         pending: false, isSuccess: true, message: null, errors: {},
-        id: action.payload.id
+        id: action.payload.id, req_uuid
       }))
     case CREATE_ERROR:
-      return state.set('create', fromJS({
+      return state.setIn(['create', req_uuid], fromJS({
         pending: false, isSuccess: false, message: action.payload.message,
-        errors: action.payload.errors || {}, id: null
+        errors: action.payload.errors || {}, id: null, req_uuid
       }))
     case UPDATE:
-      return state.set('create', fromJS({
-        pending: true, id: action.payload.id
+      return state.setIn(['create', req_uuid], fromJS({
+        pending: true, id: action.payload.id, req_uuid
       }))
     case UPDATE_SUCCESS:
-      return state.set('update', fromJS({
+      return state.setIn(['update', req_uuid], fromJS({
         pending: false, isSuccess: true, message: null, errors: {},
-        id: action.payload.id
+        id: action.payload.id, req_uuid
       }))
     case UPDATE_ERROR:
-      return state.set('update', fromJS({
+      return state.setIn(['update', req_uuid], fromJS({
         pending: false, isSuccess: false, message: action.payload.message,
-        errors: action.payload.errors, id: null
+        errors: action.payload.errors, id: null, req_uuid
       }))
     case DELETE:
-      return state.set('delete', fromJS({
-        pending: true, id: action.payload.id
+      return state.setIn(['delete', req_uuid], fromJS({
+        pending: true, id: action.payload.id, req_uuid
       }))
     case DELETE_SUCCESS:
-      return state.set('delete', fromJS({
+      return state.setIn(['delete', req_uuid], fromJS({
         pending: false, isSuccess: true, message: null, errors: null,
-        id: action.meta.id
+        id: action.meta.id, req_uuid
       }))
     case DELETE_ERROR:
       // probably action.payload will be null or {} but whatever!!
-      return state.set('delete', fromJS({
+      return state.setIn(['delete', action.meta.req_uuid], fromJS({
         pending: false, isSuccess: false, message: action.payload.message,
-        errors: action.payload.errors, id: action.meta.id
+        errors: action.payload.errors, id: action.meta.id, req_uuid
       }))
     default:
       return state
