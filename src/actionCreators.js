@@ -9,13 +9,15 @@ import {
 
 export function fetchCollection(model, path, params = {}, opts = {}) {
   const method = opts.method || 'get'
+  const nested = opts.nested || []
   return {
     type: FETCH,
     meta: {
       success: FETCH_SUCCESS,
       failure: FETCH_ERROR,
       params,
-      model
+      model,
+      nested
     },
     payload: {
       method,
@@ -27,11 +29,13 @@ export function fetchCollection(model, path, params = {}, opts = {}) {
 
 export function fetchRecord(model, id, path, params = {}, opts = {}) {
   const method = opts.method || 'get'
+  const nested = opts.nested || []
   return {
     type: FETCH_ONE,
     meta: {
       success: FETCH_ONE_SUCCESS,
       failure: FETCH_ONE_ERROR,
+      nested,
       model,
       id
     },

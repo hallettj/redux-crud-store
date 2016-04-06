@@ -1,6 +1,7 @@
 import 'babel-polyfill'
 import { takeEvery } from 'redux-saga'
 import { fork, put, call } from 'redux-saga/effects'
+import { process } from './utils'
 
 import {
   FETCH, FETCH_ONE, CREATE, UPDATE, DELETE, API_CALL, GARBAGE_COLLECT
@@ -9,9 +10,9 @@ import {
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 function* garbageCollector() {
-  yield call(delay, 10 * 60 * 1000) // initial 10 minute delay
+  // every 15 minutes, check for unrefreshed data
   for (;;) {
-    yield call(delay, 5 * 60 * 1000) // every 5 minutes thereafter
+    yield call(delay, 15 * 60 * 1000)
     yield put({ type: GARBAGE_COLLECT, meta: { now: Date.now() } })
   }
 }
@@ -24,7 +25,10 @@ const apiGeneric = (apiClient) => function* _apiGeneric(action) {
 
   try {
     const response = yield call(apiClient[method], path, { params, data })
-    yield put({ ...action, type: success, payload: response })
+    const actionsToDispatch = prepareActionsFromResponse(response, action)
+    actionsToDispatch.forEach(action => (
+      yield put(action)
+    ))
   } catch (error) {
     yield put({ ...action, type: failure, payload: error, error: true })
   }
