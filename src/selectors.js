@@ -15,7 +15,8 @@ function recent(fetchTime) {
   return Date.now() - recentTimeInterval < fetchTime
 }
 
-export function selectCollection(modelName, crud, params = {}) {
+export function selectCollection(modelName, crud, params = {}, opts = {}) {
+  const nested = opts.nested || []
   const isLoading = ({ needsFetch }) => ({
     otherInfo: {},
     data: [],
@@ -57,9 +58,18 @@ export function selectCollection(modelName, crud, params = {}) {
     return isLoading({ needsFetch: true })
   }
 
-  const data = collection.get('ids', fromJS([])).map((id) =>
+  const dataShallow = collection.get('ids', fromJS([])).map((id) =>
     model.getIn(['byId', id.toString(), 'record'])
   ).toJS()
+
+  const data = dataShallow.map(shallow => {
+    let record = Object.assign({}, shallow)
+    nested.forEach(nestedModel => {
+      const id = record[nestedModel].toString()
+      record[nestedModel] = crud.getIn([nestedModel, 'byId', id, 'record'])
+    })
+    return record
+  })
 
   return {
     otherInfo: collection.get('otherInfo', Map()).toJS(),
