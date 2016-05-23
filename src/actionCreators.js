@@ -18,6 +18,11 @@ import type {
   Method
 } from './actionTypes'
 
+const getTransactionId: () => number = (function transactionIdScope() {
+  let nextTransactionId = 0
+  return () => nextTransactionId++
+}())
+
 type Opts = {
   method?: Method,
 }
@@ -70,7 +75,8 @@ export function createRecord<T>(model: string, path: string, data: $Shape<T> = {
     meta: {
       success: CREATE_SUCCESS,
       failure: CREATE_ERROR,
-      model
+      model,
+      txId: getTransactionId()
     },
     payload: {
       method,
@@ -91,7 +97,8 @@ export function updateRecord<T>(model: string, id: ID, path: string, data: $Shap
       success: UPDATE_SUCCESS,
       failure: UPDATE_ERROR,
       model,
-      id
+      id,
+      txId: getTransactionId()
     },
     payload: {
       method,
@@ -112,7 +119,8 @@ export function deleteRecord(model: string, id: ID, path: string,
       success: DELETE_SUCCESS,
       failure: DELETE_ERROR,
       model,
-      id
+      id,
+      txId: getTransactionId()
     },
     payload: {
       method,

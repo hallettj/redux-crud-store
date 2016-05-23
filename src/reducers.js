@@ -1,6 +1,6 @@
 /* eslint no-case-declarations: 0 */
 
-import { fromJS } from 'immutable'
+import { Map, fromJS } from 'immutable'
 import isEqual from 'lodash.isequal'
 import {
   FETCH, FETCH_SUCCESS, FETCH_ERROR,
@@ -33,10 +33,13 @@ const actionStatusInitialState = fromJS({
   delete: {}
 })
 
+const transactionsInitialState = fromJS({})
+
 const modelInitialState = fromJS({
   collections: [],
   byId: undefined,
-  actionStatus: undefined
+  actionStatus: undefined,
+  transactions: transactionsInitialState
 })
 
 // holds a number of models, each of which are strucured like modelInitialState
@@ -92,12 +95,6 @@ function byIdReducer(state = byIdInitialState, action) {
       }))
     case DELETE_SUCCESS:
       return state.delete(id.toString())
-    case GARBAGE_COLLECT:
-      const tenMinutesAgo = action.meta.now - 10 * 60 * 1000
-      return state.filter(collection => (
-        collection.get('fetchTime') > tenMinutesAgo ||
-          collection.get('fetchTime') === null
-      ))
     default:
       return state
   }
@@ -150,13 +147,6 @@ function collectionsReducer(state = collectionsInitialState, action) {
       // set fetchTime on all entries to null
       return state.map((item, idx) => (
         item.set('fetchTime', null)
-      ))
-
-    case GARBAGE_COLLECT:
-      const tenMinutesAgo = action.meta.now - 10 * 60 * 1000
-      return state.filter(collection => (
-        collection.get('fetchTime') > tenMinutesAgo ||
-          collection.get('fetchTime') === null
       ))
     default:
       return state
@@ -211,6 +201,75 @@ function actionStatusReducer(state = actionStatusInitialState, action) {
   }
 }
 
+function transactionsReducer(state = transactionsInitialState, action) {
+  const txId = action.meta && action.meta.txId
+  if (typeof txId === 'undefined') { return state }
+  const fetchTime = action.meta.fetchTime
+  switch (action.type) {
+    case CREATE:
+      return state.set(txId, fromJS({
+        pending: true,
+        id: null,
+        fetchTime
+      }))
+    case CREATE_SUCCESS:
+    case CREATE_ERROR:
+      return state.set(txId, fromJS({
+        pending: false,
+        id: action.payload.id,
+        isSuccess: !action.error,
+        payload: action.payload,
+        fetchTime
+      }))
+    case UPDATE:
+      return state.set(txId, fromJS({
+        pending: true,
+        id: action.meta.id,
+        fetchTime
+      }))
+    case UPDATE_SUCCESS:
+    case UPDATE_ERROR:
+      return state.set(txId, fromJS({
+        pending: false,
+        id: action.meta.id,
+        isSuccess: !action.error,
+        payload: action.payload,
+        fetchTime
+      }))
+    case DELETE:
+      return state.set(txId, fromJS({
+        pending: true,
+        id: action.meta.id,
+        fetchTime
+      }))
+    case DELETE_SUCCESS:
+    case DELETE_ERROR:
+      return state.set(txId, fromJS({
+        pending: false,
+        id: action.meta.id,
+        isSuccess: !action.error,
+        payload: action.payload, // probably null...
+        fetchTime
+      }))
+    default:
+      return state
+  }
+}
+
+function garbageCollectReducer(state = Map(), action) {
+  let now
+  switch (action.type) {
+    case GARBAGE_COLLECT:
+      const tenMinutesAgo = action.meta.now - 10 * 60 * 1000
+      return state.filter(entry => (
+        entry.get('fetchTime') > tenMinutesAgo ||
+          entry.get('fetchTime') === null
+      ))
+    default:
+      return state
+  }
+}
+
 export default function crudReducer(state = initialState, action) {
   const id = action.meta ? action.meta.id : undefined
   switch (action.type) {
@@ -220,9 +279,11 @@ export default function crudReducer(state = initialState, action) {
     case GARBAGE_COLLECT:
       return state.map(model => (
                model.update('collections',
-                            (s) => collectionsReducer(s, action))
+                            (s) => garbageCollectReducer(s, action))
                     .update('byId',
-                            (s) => byIdReducer(s, action))
+                            (s) => garbageCollectReducer(s, action))
+                    .update('transactions',
+                            (s) => garbageCollectReducer(s, action))
              ))
     case FETCH:
     case FETCH_SUCCESS:
@@ -239,6 +300,8 @@ export default function crudReducer(state = initialState, action) {
     case CREATE:
       return state.updateIn([action.meta.model, 'actionStatus'],
                             (s) => actionStatusReducer(s, action))
+                  .updateIn([action.meta.model, 'transactions'],
+                            (s) => transactionsReducer(s, action))
     case CREATE_SUCCESS:
       return state.updateIn([action.meta.model, 'byId'],
                             (s) => byIdReducer(s, action))
@@ -247,9 +310,13 @@ export default function crudReducer(state = initialState, action) {
                             (s) => collectionsReducer(s, action))
                   .updateIn([action.meta.model, 'actionStatus'],
                             (s) => actionStatusReducer(s, action))
+                  .updateIn([action.meta.model, 'transactions'],
+                            (s) => transactionsReducer(s, action))
     case CREATE_ERROR:
       return state.updateIn([action.meta.model, 'actionStatus'],
                             (s) => actionStatusReducer(s, action))
+                  .updateIn([action.meta.model, 'transactions'],
+                            (s) => transactionsReducer(s, action))
     case UPDATE:
     case UPDATE_SUCCESS:
     case UPDATE_ERROR:
@@ -257,6 +324,8 @@ export default function crudReducer(state = initialState, action) {
                             (s) => byIdReducer(s, action))
                   .updateIn([action.meta.model, 'actionStatus'],
                             (s) => actionStatusReducer(s, action))
+                  .updateIn([action.meta.model, 'transactions'],
+                            (s) => transactionsReducer(s, action))
     case DELETE:
     case DELETE_SUCCESS:
     case DELETE_ERROR:
@@ -267,6 +336,8 @@ export default function crudReducer(state = initialState, action) {
                             (s) => collectionsReducer(s, action))
                   .updateIn([action.meta.model, 'actionStatus'],
                             (s) => actionStatusReducer(s, action))
+                  .updateIn([action.meta.model, 'transactions'],
+                            (s) => transactionsReducer(s, action))
     default:
       return state
   }
