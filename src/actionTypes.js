@@ -60,7 +60,7 @@ export type Meta = {
   params?:    Object,
   model:      Model,
   id?:        ID,
-  txId?:      number,
+  txId?:      string,
   fetchTime?: number,
 }
 

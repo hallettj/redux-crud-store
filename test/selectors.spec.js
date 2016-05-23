@@ -38,12 +38,28 @@ const crud = fromJS({
       1: { fetchTime: now, error: null, record: { id: 1, name: 'one' } },
       2: { fetchTime: now, error: null, record: { id: 2, name: 'two' } },
       3: { fetchTime: now, error: null, record: { id: 3, name: 'three' } }
+    },
+    actionStatus: {
+      create: {},
+      update: {},
+      delete: {}
+    },
+    transactions: {
+      1: {
+        pending: false, id: 3, isSuccess: true, fetchTime: now, payload: {
+          status: 201,
+          data: { id: 3, name: 'three' }
+        }
+      },
+      2: {
+        pending: false, id: 2, isSuccess: false, fetchTime: now, payload: (
+          new Error('could not update record')
+        )
+      },
+      3: {
+        pending: true, id: 1, fetchTime: now
+      }
     }
-  },
-  actionStatus: {
-    create: {},
-    update: {},
-    delete: {}
   }
 })
 
@@ -114,25 +130,31 @@ describe('select', () => {
 
 describe('selectStatus', () => {
   it('selects status of "create" action', () => {
-    const action = createWidget({ name: 'four' })
+    const action = createWidget({ name: 'three' })
+    action.meta.txId = '1'  // match transaction ID in fixture data
     const status = selectStatus(action, crud)
-    expect(status).toEqual(
-      selectNiceActionStatus(modelName, crud, 'create')
-    )
+    expect(status.id).toBe(3)
+    expect(status.pending).toBe(false)
   })
   it('selects status of "update" action', () => {
-    const action = updateWidget(3, { id: 3, name: 'three!' })
+    const action = updateWidget(2, { id: 2, name: 'two!' })
+    action.meta.txId = '2'  // match transaction ID in fixture data
     const status = selectStatus(action, crud)
-    expect(status).toEqual(
-      selectNiceActionStatus(modelName, crud, 'update')
-    )
+    expect(status.id).toBe(2)
+    expect(status.error).toBeA(Error)
   })
   it('selects status of "delete" action', () => {
-    const action = deleteWidget(4)
+    const action = deleteWidget(1)
+    action.meta.txId = '3'  // match transaction ID in fixture data
     const status = selectStatus(action, crud)
-    expect(status).toEqual(
-      selectNiceActionStatus(modelName, crud, 'delete')
-    )
+    expect(status.id).toBe(1)
+    expect(status.pending).toBe(true)
+  })
+  it('responds with `undefined` when no matching transaction is found', () => {
+    const action = createWidget({ name: 'ninety-nine' })
+    action.meta.txId = '99'  // non-existent transaction ID
+    const status = selectStatus(action, crud)
+    expect(status).toBe(undefined)
   })
 })
 

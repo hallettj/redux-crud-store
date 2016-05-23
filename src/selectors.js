@@ -47,7 +47,7 @@ export function select<T>(action: CrudAction<T>, crud: State): Selection<T> {
     case FETCH_ONE:
       id = action.meta.id
       if (id == null) {
-        throw new Error('Selecting a record, but no ID was given')
+        throw new Error('Selecting a record, but no ID was given.')
       }
       selection = selectRecord(model, id, crud)
       break
@@ -56,24 +56,6 @@ export function select<T>(action: CrudAction<T>, crud: State): Selection<T> {
   }
   selection.fetch = action
   return selection
-}
-
-export function selectStatus<T>(action: CrudAction<T>, crud: State): NiceActionStatus<T> {
-  let actionType
-  switch (action.type) {
-    case CREATE:
-      actionType = 'create'
-      break
-    case UPDATE:
-      actionType = 'update'
-      break
-    case DELETE:
-      actionType = 'delete'
-      break
-    default:
-      throw new Error(`Action type '${action.type}' is not a create, update, or delete action.`)
-  }
-  return selectNiceActionStatus(action.meta.model, crud, actionType)
 }
 
 export function selectCollection<T>(modelName: Model, crud: State, params: Object = {}
@@ -161,16 +143,55 @@ export function selectRecordOrEmptyObject<T>(modelName: Model, id: ID, crud: Sta
   return record
 }
 
-type ActionStatusSelection<T> = {
+type RawActionStatusSelection<T> = {
   isSuccess: ?boolean,
   pending: boolean,
   id: ?ID,
   payload: ?(T|Error)
 }
 
+export type ActionStatusSelection<T> = {
+  id?: ?ID,
+  pending?: boolean,
+  response?: T,
+  error?: Error,
+}
+
+function toNiceStatus<T>(status: RawActionStatusSelection<T>): ActionStatusSelection<T> {
+  const { pending, id, isSuccess, payload } = status
+
+  if (pending === true) {
+    return { id, pending }
+  }
+  if (isSuccess === true) {
+    return {
+      id,
+      response: (payload:any),
+      pending
+    }
+  }
+  if (isSuccess === false) {
+    return {
+      id,
+      error: (payload:any),
+      pending
+    }
+  }
+  return {}
+}
+
+export function selectStatus<T>(action: CrudAction<T>, crud: State): ?ActionStatusSelection<T> {
+  const txId = action.meta && action.meta.txId
+  if (typeof txId === 'undefined') {
+    throw new Error('Cannot select status of action that has no transaction ID.')
+  }
+  const status = crud.getIn([action.meta.model, 'transactions', txId])
+  return status && toNiceStatus(status.toJS())
+}
+
 export function selectActionStatus<T>(modelName: Model, crud: State,
                                       action: 'create' | 'update' | 'delete'
-                                     ): ActionStatusSelection<T> {
+                                     ): RawActionStatusSelection<T> {
   const status = crud.getIn([modelName, 'actionStatus', action]) ||
                  fromJS({
                    pending: false,
@@ -191,24 +212,6 @@ type NiceActionStatus<T> = {
 export function selectNiceActionStatus<T>(modelName: Model, crud: State,
                                           action: 'create' | 'update' | 'delete'
                                          ): NiceActionStatus<T> {
-  const { pending, id, isSuccess, payload } = selectActionStatus(modelName, crud, action)
-
-  if (pending === true) {
-    return { id, pending }
-  }
-  if (isSuccess === true) {
-    return {
-      id,
-      response: (payload:any),
-      pending
-    }
-  }
-  if (isSuccess === false) {
-    return {
-      id,
-      error: (payload:any),
-      pending
-    }
-  }
-  return {}
+  const status = selectActionStatus(modelName, crud, action)
+  return toNiceStatus(status)
 }

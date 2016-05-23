@@ -18,9 +18,9 @@ import type {
   Method
 } from './actionTypes'
 
-const getTransactionId: () => number = (function transactionIdScope() {
+const getTransactionId: () => string = (function transactionIdScope() {
   let nextTransactionId = 0
-  return () => nextTransactionId++
+  return () => String(nextTransactionId++)
 }())
 
 type Opts = {
